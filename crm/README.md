@@ -1,9 +1,10 @@
-# CRM Backend Setup
+# CRM Celery Setup
 
-## Setup Instructions
+## Setup Steps
 
-1. Clone this repository:
+1. **Install Redis and dependencies**
+   - Ensure Redis is installed and running on your system (`redis://localhost:6379/0`).
+
+2. **Run migrations**
    ```bash
-   git clone https://github.com/yourusername/alx_backend_graphql_crm.git
-   cd alx_backend_graphql_crm
-
+   python manage.py migrate
