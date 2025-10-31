@@ -1,21 +1,31 @@
 import datetime
-import requests
+from gql import gql, Client
+from gql.transport.requests import RequestsHTTPTransport
 
 def log_crm_heartbeat():
-    """Log a heartbeat message and check the GraphQL endpoint."""
-    now = datetime.datetime.now().strftime("%d/%m/%Y-%H:%M:%S")
-    message = f"{now} CRM is alive\n"
+    """
+    Logs a heartbeat message and checks the GraphQL hello field.
+    """
+    GRAPHQL_URL = "http://localhost:8000/graphql"
 
-    # Append heartbeat to log file
-    with open("/tmp/crm_heartbeat_log.txt", "a") as f:
-        f.write(message)
+    # Prepare GraphQL client
+    transport = RequestsHTTPTransport(url=GRAPHQL_URL, verify=False)
+    client = Client(transport=transport, fetch_schema_from_transport=False)
 
-    # Optional GraphQL check
+    # Optional GraphQL query
+    query = gql("""
+        query {
+            hello
+        }
+    """)
+
     try:
-        response = requests.post("http://localhost:8000/graphql", json={"query": "{ hello }"})
-        if response.status_code == 200:
-            print("GraphQL endpoint responsive.")
-        else:
-            print("GraphQL endpoint error.")
+        response = client.execute(query)
+        hello_msg = response.get("hello", "No response")
     except Exception:
-        print("GraphQL check failed.")
+        hello_msg = "GraphQL not reachable"
+
+    # Write heartbeat log
+    with open("/tmp/crm_heartbeat_log.txt", "a") as f:
+        timestamp = datetime.datetime.now().strftime("%d/%m/%Y-%H:%M:%S")
+        f.write(f"{timestamp} CRM is alive - {hello_msg}\n")
