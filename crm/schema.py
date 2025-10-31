@@ -1,41 +1,30 @@
-from graphene import ObjectType, Mutation, String, Int, List, Field
 import graphene
+from graphene_django import DjangoObjectType
+from crm.models import Product
 
-# Mock data for demonstration
-class Product(graphene.ObjectType):
-    id = graphene.Int()
-    name = graphene.String()
-    stock = graphene.Int()
+class ProductType(DjangoObjectType):
+    class Meta:
+        model = Product
+        fields = ("id", "name", "price", "stock")
 
-# Global sample list (for simulation)
-PRODUCTS = [
-    {"id": 1, "name": "Laptop", "stock": 5},
-    {"id": 2, "name": "Phone", "stock": 15},
-    {"id": 3, "name": "Tablet", "stock": 8},
-]
+class UpdateLowStockProducts(graphene.Mutation):
+    success = graphene.Boolean()
 
-class UpdateLowStockProducts(Mutation):
     class Arguments:
-        pass
+        threshold = graphene.Int(required=True)
+        new_stock = graphene.Int(required=True)
 
-    success = graphene.String()
-    updated_products = List(Product)
+    def mutate(self, info, threshold, new_stock):
+        low_stock_products = Product.objects.filter(stock__lt=threshold)
+        for product in low_stock_products:
+            product.stock = new_stock
+            product.save()
+        return UpdateLowStockProducts(success=True)
 
-    def mutate(self, info):
-        updated = []
-        for product in PRODUCTS:
-            if product["stock"] < 10:
-                product["stock"] += 10
-                updated.append(product)
-        return UpdateLowStockProducts(
-            success="Low stock products updated successfully!",
-            updated_products=[Product(**p) for p in updated]
-        )
-
-class Mutation(ObjectType):
+class Mutation(graphene.ObjectType):
     update_low_stock_products = UpdateLowStockProducts.Field()
 
-class Query(ObjectType):
-    hello = String(default_value="Hello from GraphQL!")
+class Query(graphene.ObjectType):
+    hello = graphene.String(default_value="Hello from CRM!")
 
 schema = graphene.Schema(query=Query, mutation=Mutation)

@@ -1,30 +1,16 @@
-from celery import shared_task
-from gql import gql, Client
-from gql.transport.requests import RequestsHTTPTransport
-from datetime import datetime
+import requests
+import logging
 
-@shared_task
 def generate_crm_report():
-    GRAPHQL_URL = "http://localhost:8000/graphql"
-    transport = RequestsHTTPTransport(url=GRAPHQL_URL, verify=False)
-    client = Client(transport=transport, fetch_schema_from_transport=False)
-
-    query = gql("""
-        query {
-            totalCustomers
-            totalOrders
-            totalRevenue
-        }
-    """)
+    log_file = "/tmp/crmreportlog.txt"
+    logging.basicConfig(filename=log_file, level=logging.INFO)
+    logging.info("CRM report generation started.")
 
     try:
-        result = client.execute(query)
-        customers = result.get("totalCustomers", 0)
-        orders = result.get("totalOrders", 0)
-        revenue = result.get("totalRevenue", 0)
-        log = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Report: {customers} customers, {orders} orders, {revenue} revenue\n"
+        response = requests.get("https://example.com/graphql")
+        if response.status_code == 200:
+            logging.info("CRM report generated successfully.")
+        else:
+            logging.warning(f"Failed to fetch CRM data. Status code: {response.status_code}")
     except Exception as e:
-        log = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Error: {e}\n"
-
-    with open("/tmp/crm_report_log.txt", "a") as f:
-        f.write(log)
+        logging.error(f"Error generating CRM report: {e}")
