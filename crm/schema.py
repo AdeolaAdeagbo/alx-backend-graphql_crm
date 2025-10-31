@@ -9,17 +9,16 @@ class ProductType(DjangoObjectType):
 
 class UpdateLowStockProducts(graphene.Mutation):
     success = graphene.Boolean()
+    updated_products = graphene.List(ProductType)
 
-    class Arguments:
-        threshold = graphene.Int(required=True)
-        new_stock = graphene.Int(required=True)
-
-    def mutate(self, info, threshold, new_stock):
-        low_stock_products = Product.objects.filter(stock__lt=threshold)
+    def mutate(self, info):
+        low_stock_products = Product.objects.filter(stock__lt=10)
+        updated = []
         for product in low_stock_products:
-            product.stock = new_stock
+            product.stock += 10  # increment by 10
             product.save()
-        return UpdateLowStockProducts(success=True)
+            updated.append(product)
+        return UpdateLowStockProducts(success=True, updated_products=updated)
 
 class Mutation(graphene.ObjectType):
     update_low_stock_products = UpdateLowStockProducts.Field()
