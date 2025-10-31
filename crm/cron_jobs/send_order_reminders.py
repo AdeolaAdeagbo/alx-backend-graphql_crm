@@ -1,41 +1,41 @@
 #!/usr/bin/env python3
-import requests
 import datetime
+from gql import gql, Client
+from gql.transport.requests import RequestsHTTPTransport
 
 # GraphQL endpoint
 GRAPHQL_URL = "http://localhost:8000/graphql"
 
-# Calculate the date 7 days ago
-seven_days_ago = (datetime.datetime.now() - datetime.timedelta(days=7)).strftime("%Y-%m-%d")
+def main():
+    # Calculate the date 7 days ago
+    seven_days_ago = (datetime.datetime.now() - datetime.timedelta(days=7)).strftime("%Y-%m-%d")
 
-# GraphQL query to get pending orders from the last week
-query = """
-query GetRecentPendingOrders($date: Date!) {
-  orders(orderDate_Gte: $date, status: "PENDING") {
-    id
-    customer {
-      email
-    }
-  }
-}
-"""
+    # Define GraphQL query
+    query = gql("""
+        query {
+            orders(orderDate_Gte: "%s") {
+                id
+                customer {
+                    email
+                }
+            }
+        }
+    """ % seven_days_ago)
 
-# Send the GraphQL query
-response = requests.post(GRAPHQL_URL, json={"query": query, "variables": {"date": seven_days_ago}})
+    # Configure GraphQL client
+    transport = RequestsHTTPTransport(url=GRAPHQL_URL, verify=False)
+    client = Client(transport=transport, fetch_schema_from_transport=False)
 
-if response.status_code == 200:
-    data = response.json()
-    orders = data.get("data", {}).get("orders", [])
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # Execute query
+    result = client.execute(query)
 
-    # Log results
-    with open("/tmp/order_reminders_log.txt", "a") as log:
-        log.write(f"\n[{timestamp}] Found {len(orders)} pending orders\n")
-        for order in orders:
-            order_id = order.get("id")
-            email = order.get("customer", {}).get("email")
-            log.write(f"Order ID: {order_id} | Customer: {email}\n")
+    # Log reminders
+    with open("/tmp/order_reminders_log.txt", "a") as f:
+        for order in result.get("orders", []):
+            log_line = f"{datetime.datetime.now()} - Order ID: {order['id']}, Customer: {order['customer']['email']}\n"
+            f.write(log_line)
 
     print("Order reminders processed!")
-else:
-    print(f"GraphQL query failed! Status code: {response.status_code}")
+
+if __name__ == "__main__":
+    main()
